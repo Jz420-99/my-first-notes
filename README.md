@@ -1,2 +1,7 @@
-# my-first-notes
-my first github repository
+# 我的学习笔记
+这是我用GitHub存的第一个笔记。
+
+## 今日学习内容
+- 注册GitHub账号
+- 创建第一个仓库
+- 在线编辑文件
