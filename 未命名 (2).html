@@ -1,0 +1,1698 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TodoMaster Pro+ - 每日待办打卡</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#6366f1',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444',
+                        dark: '#1e293b',
+                        light: '#f8fafc'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .task-complete {
+                text-decoration: line-through;
+                opacity: 0.6;
+            }
+            .glass-effect {
+                background: rgba(255, 255, 255, 0.7);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
+            .date-btn-active {
+                @apply bg-primary text-white;
+            }
+            .tab-active {
+                @apply border-b-2 border-primary text-primary font-medium;
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-3xl">
+        <!-- 头部区域 -->
+        <header class="mb-8 text-center">
+            <div class="glass-effect rounded-2xl shadow-xl p-6 mb-6">
+                <h1 class="text-[clamp(2rem,5vw,3rem)] font-bold text-dark mb-2">
+                    <i class="fa fa-check-square-o text-primary mr-2"></i>TodoMaster Pro+
+                </h1>
+                
+                <!-- 日期选择器 -->
+                <div class="flex items-center justify-center gap-2 mb-4">
+                    <button id="prev-day" class="p-2 rounded-lg hover:bg-gray-200 transition-colors">
+                        <i class="fa fa-chevron-left"></i>
+                    </button>
+                    <h2 class="text-xl font-semibold text-gray-700" id="current-date-display"></h2>
+                    <button id="next-day" class="p-2 rounded-lg hover:bg-gray-200 transition-colors">
+                        <i class="fa fa-chevron-right"></i>
+                    </button>
+                    <button id="today-btn" class="ml-2 px-3 py-1 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm">
+                        今天
+                    </button>
+                </div>
+                
+                <!-- 快速日期切换 -->
+                <div class="flex justify-center gap-1 mb-6 overflow-x-auto py-2">
+                    <div id="quick-dates" class="flex gap-1">
+                        <!-- 快速日期按钮将通过JS生成 -->
+                    </div>
+                </div>
+                
+                <!-- 标签页切换 -->
+                <div class="flex justify-center border-b border-gray-200 mb-4">
+                    <button id="daily-tab" class="px-4 py-2 tab-active">每日任务</button>
+                    <button id="delayed-tab" class="px-4 py-2 text-gray-500 hover:text-gray-700">延后任务</button>
+                    <button id="long-term-tab" class="px-4 py-2 text-gray-500 hover:text-gray-700">长期项目</button>
+                </div>
+                
+                <!-- 进度条 -->
+                <div class="mt-4">
+                    <div class="flex justify-between mb-2">
+                        <span class="font-medium text-gray-700">今日完成进度</span>
+                        <span class="font-bold text-primary" id="progress-text">0/0</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                        <div id="progress-bar" class="bg-gradient-to-r from-primary to-secondary h-4 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主内容区 - 每日任务 -->
+        <main id="daily-content" class="mb-8">
+            <!-- 添加任务区域 -->
+            <div class="glass-effect rounded-xl shadow-lg p-4 mb-6">
+                <form id="add-task-form" class="flex gap-2">
+                    <input 
+                        type="text" 
+                        id="new-task-input" 
+                        placeholder="添加新任务..." 
+                        class="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                        autocomplete="off"
+                    >
+                    <button 
+                        type="submit" 
+                        class="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-lg font-medium transition-all transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
+                    >
+                        <i class="fa fa-plus mr-1"></i> 添加
+                    </button>
+                </form>
+            </div>
+
+            <!-- 任务列表区域 -->
+            <div class="glass-effect rounded-xl shadow-lg overflow-hidden mb-6">
+                <div class="p-4 border-b border-gray-200 bg-white/50">
+                    <h2 class="text-xl font-bold text-dark flex items-center">
+                        <i class="fa fa-list-ul text-primary mr-2"></i>
+                        <span id="date-title">今日待办</span>
+                        <span id="task-count" class="ml-2 bg-primary/10 text-primary text-sm px-2 py-1 rounded-full">0项</span>
+                    </h2>
+                </div>
+                
+                <ul id="task-list" class="divide-y divide-gray-200">
+                    <!-- 任务项将通过JavaScript动态添加 -->
+                    <li class="p-4 text-center text-gray-500" id="empty-state">
+                        <i class="fa fa-coffee text-4xl mb-2 block opacity-50"></i>
+                        暂无任务，添加一个开始你的一天吧！
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- 长期任务今日子项 -->
+            <div class="glass-effect rounded-xl shadow-lg overflow-hidden" id="long-term-today-section">
+                <div class="p-4 border-b border-gray-200 bg-white/50">
+                    <h2 class="text-xl font-bold text-dark flex items-center">
+                        <i class="fa fa-calendar-check-o text-secondary mr-2"></i>
+                        今日长期任务
+                        <span id="long-term-task-count" class="ml-2 bg-secondary/10 text-secondary text-sm px-2 py-1 rounded-full">0项</span>
+                    </h2>
+                </div>
+                
+                <ul id="long-term-today-list" class="divide-y divide-gray-200">
+                    <!-- 长期任务子项将通过JavaScript动态添加 -->
+                </ul>
+            </div>
+        </main>
+
+        <!-- 主内容区 - 延后任务 -->
+        <main id="delayed-content" class="mb-8 hidden">
+            <div class="glass-effect rounded-xl shadow-lg overflow-hidden">
+                <div class="p-4 border-b border-gray-200 bg-white/50">
+                    <h2 class="text-xl font-bold text-dark flex items-center">
+                        <i class="fa fa-clock-o text-warning mr-2"></i>
+                        延后的任务
+                        <span id="delayed-task-count" class="ml-2 bg-warning/10 text-warning text-sm px-2 py-1 rounded-full">0项</span>
+                    </h2>
+                </div>
+                
+                <ul id="delayed-task-list" class="divide-y divide-gray-200">
+                    <!-- 延后任务将通过JavaScript动态添加 -->
+                    <li class="p-4 text-center text-gray-500" id="delayed-empty-state">
+                        <i class="fa fa-check-circle text-4xl mb-2 block opacity-50"></i>
+                        暂无延后的任务，轻松愉快！
+                    </li>
+                </ul>
+            </div>
+        </main>
+
+        <!-- 主内容区 - 长期项目 -->
+        <main id="long-term-content" class="mb-8 hidden">
+            <!-- 添加长期项目区域 -->
+            <div class="glass-effect rounded-xl shadow-lg p-4 mb-6">
+                <form id="add-project-form" class="flex flex-col gap-3">
+                    <div class="flex gap-2">
+                        <input 
+                            type="text" 
+                            id="new-project-input" 
+                            placeholder="添加长期项目名称..." 
+                            class="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary transition-all"
+                            autocomplete="off"
+                        >
+                        <button 
+                            type="submit" 
+                            class="bg-secondary hover:bg-secondary/90 text-white px-6 py-3 rounded-lg font-medium transition-all transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
+                        >
+                            <i class="fa fa-plus mr-1"></i> 创建
+                        </button>
+                    </div>
+                    <div class="flex gap-2">
+                        <input 
+                            type="date" 
+                            id="project-start-date" 
+                            class="px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary transition-all"
+                        >
+                        <span class="self-center text-gray-500">至</span>
+                        <input 
+                            type="date" 
+                            id="project-end-date" 
+                            class="px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary transition-all"
+                        >
+                    </div>
+                </form>
+            </div>
+
+            <!-- 长期项目列表区域 -->
+            <div class="glass-effect rounded-xl shadow-lg overflow-hidden">
+                <div class="p-4 border-b border-gray-200 bg-white/50">
+                    <h2 class="text-xl font-bold text-dark flex items-center">
+                        <i class="fa fa-folder-open text-secondary mr-2"></i>
+                        进行中的项目
+                        <span id="project-count" class="ml-2 bg-secondary/10 text-secondary text-sm px-2 py-1 rounded-full">0个</span>
+                    </h2>
+                </div>
+                
+                <ul id="project-list" class="divide-y divide-gray-200">
+                    <!-- 项目项将通过JavaScript动态添加 -->
+                    <li class="p-4 text-center text-gray-500" id="project-empty-state">
+                        <i class="fa fa-folder text-4xl mb-2 block opacity-50"></i>
+                        暂无长期项目，创建一个开始你的长期计划吧！
+                    </li>
+                </ul>
+            </div>
+        </main>
+
+        <!-- 统计区域 -->
+        <footer class="glass-effect rounded-xl shadow-lg p-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div class="p-3">
+                    <p class="text-3xl font-bold text-primary" id="total-tasks">0</p>
+                    <p class="text-gray-600 text-sm">总任务</p>
+                </div>
+                <div class="p-3">
+                    <p class="text-3xl font-bold text-success" id="completed-tasks">0</p>
+                    <p class="text-gray-600 text-sm">已完成</p>
+                </div>
+                <div class="p-3">
+                    <p class="text-3xl font-bold text-warning" id="pending-tasks">0</p>
+                    <p class="text-gray-600 text-sm">待完成</p>
+                </div>
+                <div class="p-3">
+                    <p class="text-3xl font-bold text-secondary" id="completion-rate">0%</p>
+                    <p class="text-gray-600 text-sm">完成率</p>
+                </div>
+            </div>
+            
+            <div class="mt-4 pt-4 border-t border-gray-200 flex flex-wrap justify-between items-center gap-2">
+                <button 
+                    id="clear-completed" 
+                    class="text-danger hover:text-danger/80 transition-colors flex items-center"
+                >
+                    <i class="fa fa-trash-o mr-1"></i> 清除已完成
+                </button>
+                <button 
+                    id="copy-to-tomorrow" 
+                    class="text-primary hover:text-primary/80 transition-colors flex items-center"
+                >
+                    <i class="fa fa-copy mr-1"></i> 复制到明天
+                </button>
+                <button 
+                    id="reset-day" 
+                    class="text-gray-600 hover:text-gray-800 transition-colors flex items-center"
+                >
+                    <i class="fa fa-refresh mr-1"></i> 重置当日
+                </button>
+                <label class="flex items-center text-gray-600 cursor-pointer">
+                    <input type="checkbox" id="auto-migrate-toggle" class="mr-2" checked>
+                    自动迁移未完成
+                </label>
+            </div>
+        </footer>
+    </div>
+
+    <!-- 任务编辑模态框 -->
+    <div id="edit-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="glass-effect rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 transform transition-all scale-95 opacity-0" id="modal-content">
+            <h3 class="text-xl font-bold text-dark mb-4">编辑任务</h3>
+            <form id="edit-task-form">
+                <input 
+                    type="text" 
+                    id="edit-task-input" 
+                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all mb-4"
+                    autocomplete="off"
+                >
+                <div class="flex gap-2 justify-end">
+                    <button 
+                        type="button" 
+                        id="cancel-edit" 
+                        class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                        取消
+                    </button>
+                    <button 
+                        type="submit" 
+                        class="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
+                    >
+                        保存
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 延后任务模态框 -->
+    <div id="delay-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="glass-effect rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 transform transition-all scale-95 opacity-0" id="delay-modal-content">
+            <h3 class="text-xl font-bold text-dark mb-4">延后任务</h3>
+            <p class="text-gray-600 mb-4">选择一个日期，任务将在那天自动回到待办列表</p>
+            <form id="delay-task-form">
+                <input 
+                    type="date" 
+                    id="delay-date-input" 
+                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-warning/50 focus:border-warning transition-all mb-4"
+                >
+                <div class="flex gap-2 justify-end">
+                    <button 
+                        type="button" 
+                        id="cancel-delay" 
+                        class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                        取消
+                    </button>
+                    <button 
+                        type="submit" 
+                        class="px-4 py-2 rounded-lg bg-warning text-white hover:bg-warning/90 transition-colors"
+                    >
+                        确认延后
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 长期项目详情模态框 -->
+    <div id="project-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="glass-effect rounded-xl shadow-2xl p-6 w-full max-w-lg mx-4 transform transition-all scale-95 opacity-0" id="project-modal-content">
+            <h3 class="text-xl font-bold text-dark mb-4" id="project-modal-title">项目详情</h3>
+            
+            <div class="mb-4">
+                <div class="flex justify-between mb-2">
+                    <span class="font-medium text-gray-700">项目总进度</span>
+                    <span class="font-bold text-secondary" id="project-progress-text">0/0</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div id="project-progress-bar" class="bg-gradient-to-r from-secondary to-primary h-3 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <form id="add-subtask-form" class="flex gap-2 mb-4">
+                <input 
+                    type="text" 
+                    id="new-subtask-input" 
+                    placeholder="添加子任务..." 
+                    class="flex-1 px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary transition-all"
+                    autocomplete="off"
+                >
+                <input 
+                    type="date" 
+                    id="subtask-date" 
+                    class="px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary transition-all"
+                >
+                <button 
+                    type="submit" 
+                    class="bg-secondary hover:bg-secondary/90 text-white px-4 py-2 rounded-lg font-medium transition-all"
+                >
+                    添加
+                </button>
+            </form>
+            
+            <div class="max-h-64 overflow-y-auto">
+                <ul id="subtask-list" class="divide-y divide-gray-200">
+                    <!-- 子任务将通过JavaScript动态添加 -->
+                </ul>
+            </div>
+            
+            <div class="mt-4 pt-4 border-t border-gray-200 flex justify-between">
+                <button 
+                    type="button" 
+                    id="delete-project" 
+                    class="text-danger hover:text-danger/80 transition-colors flex items-center"
+                >
+                    <i class="fa fa-trash mr-1"></i> 删除项目
+                </button>
+                <button 
+                    type="button" 
+                    id="close-project-modal" 
+                    class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 应用状态
+        let currentDate = new Date();
+        let dailyTasks = {}; // 按日期存储每日任务: { "2024-05-22": [task1, task2, ...] }
+        let delayedTasks = []; // 延后的任务数组
+        let longTermProjects = []; // 长期项目数组
+        let editingTaskId = null;
+        let delayingTaskId = null;
+        let currentProjectId = null;
+        let autoMigrateEnabled = true;
+
+        // DOM元素
+        const addTaskForm = document.getElementById('add-task-form');
+        const newTaskInput = document.getElementById('new-task-input');
+        const taskList = document.getElementById('task-list');
+        const emptyState = document.getElementById('empty-state');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const taskCount = document.getElementById('task-count');
+        const dateTitle = document.getElementById('date-title');
+        const totalTasksEl = document.getElementById('total-tasks');
+        const completedTasksEl = document.getElementById('completed-tasks');
+        const pendingTasksEl = document.getElementById('pending-tasks');
+        const completionRateEl = document.getElementById('completion-rate');
+        const clearCompletedBtn = document.getElementById('clear-completed');
+        const copyToTomorrowBtn = document.getElementById('copy-to-tomorrow');
+        const resetDayBtn = document.getElementById('reset-day');
+        const autoMigrateToggle = document.getElementById('auto-migrate-toggle');
+        const currentDateDisplay = document.getElementById('current-date-display');
+        const prevDayBtn = document.getElementById('prev-day');
+        const nextDayBtn = document.getElementById('next-day');
+        const todayBtn = document.getElementById('today-btn');
+        const quickDatesContainer = document.getElementById('quick-dates');
+        const dailyTab = document.getElementById('daily-tab');
+        const delayedTab = document.getElementById('delayed-tab');
+        const longTermTab = document.getElementById('long-term-tab');
+        const dailyContent = document.getElementById('daily-content');
+        const delayedContent = document.getElementById('delayed-content');
+        const longTermContent = document.getElementById('long-term-content');
+        const longTermTodaySection = document.getElementById('long-term-today-section');
+        const longTermTodayList = document.getElementById('long-term-today-list');
+        const longTermTaskCount = document.getElementById('long-term-task-count');
+        const delayedTaskList = document.getElementById('delayed-task-list');
+        const delayedEmptyState = document.getElementById('delayed-empty-state');
+        const delayedTaskCount = document.getElementById('delayed-task-count');
+        const addProjectForm = document.getElementById('add-project-form');
+        const newProjectInput = document.getElementById('new-project-input');
+        const projectStartDate = document.getElementById('project-start-date');
+        const projectEndDate = document.getElementById('project-end-date');
+        const projectList = document.getElementById('project-list');
+        const projectEmptyState = document.getElementById('project-empty-state');
+        const projectCount = document.getElementById('project-count');
+        const editModal = document.getElementById('edit-modal');
+        const modalContent = document.getElementById('modal-content');
+        const editTaskForm = document.getElementById('edit-task-form');
+        const editTaskInput = document.getElementById('edit-task-input');
+        const cancelEditBtn = document.getElementById('cancel-edit');
+        const delayModal = document.getElementById('delay-modal');
+        const delayModalContent = document.getElementById('delay-modal-content');
+        const delayTaskForm = document.getElementById('delay-task-form');
+        const delayDateInput = document.getElementById('delay-date-input');
+        const cancelDelayBtn = document.getElementById('cancel-delay');
+        const projectModal = document.getElementById('project-modal');
+        const projectModalContent = document.getElementById('project-modal-content');
+        const projectModalTitle = document.getElementById('project-modal-title');
+        const projectProgressBar = document.getElementById('project-progress-bar');
+        const projectProgressText = document.getElementById('project-progress-text');
+        const addSubtaskForm = document.getElementById('add-subtask-form');
+        const newSubtaskInput = document.getElementById('new-subtask-input');
+        const subtaskDate = document.getElementById('subtask-date');
+        const subtaskList = document.getElementById('subtask-list');
+        const deleteProjectBtn = document.getElementById('delete-project');
+        const closeProjectModalBtn = document.getElementById('close-project-modal');
+
+        // 初始化应用
+        function initApp() {
+            loadAllData();
+            checkAndMigrateUnfinishedTasks();
+            checkAndRestoreDelayedTasks();
+            renderCurrentDateTasks();
+            renderDelayedTasks();
+            renderLongTermProjects();
+            updateQuickDates();
+            updateDateDisplay();
+            setDefaultDates();
+            
+            // 如果今天没有任务，添加默认任务
+            const todayKey = getDateKey(new Date());
+            if (!dailyTasks[todayKey] || dailyTasks[todayKey].length === 0) {
+                const defaultTasks = [
+                    { id: generateId(), text: '投一份岗', completed: false, createdAt: new Date().toISOString() },
+                    { id: generateId(), text: '改一份简历', completed: false, createdAt: new Date().toISOString() },
+                    { id: generateId(), text: '面试', completed: false, createdAt: new Date().toISOString() },
+                    { id: generateId(), text: '做论文', completed: false, createdAt: new Date().toISOString() },
+                    { id: generateId(), text: '研究claude和gpt使用', completed: false, createdAt: new Date().toISOString() },
+                    { id: generateId(), text: '做1/4项目', completed: false, createdAt: new Date().toISOString() }
+                ];
+                dailyTasks[todayKey] = defaultTasks;
+                saveAllData();
+                renderCurrentDateTasks();
+            }
+        }
+
+        // 获取日期键值 (YYYY-MM-DD格式)
+        function getDateKey(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        // 格式化日期显示
+        function formatDateDisplay(date) {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            return date.toLocaleDateString('zh-CN', options);
+        }
+
+        // 检查是否是今天
+        function isToday(date) {
+            const today = new Date();
+            return getDateKey(date) === getDateKey(today);
+        }
+
+        // 检查是否是昨天
+        function isYesterday(date) {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            return getDateKey(date) === getDateKey(yesterday);
+        }
+
+        // 更新日期显示
+        function updateDateDisplay() {
+            currentDateDisplay.textContent = formatDateDisplay(currentDate);
+            
+            if (isToday(currentDate)) {
+                dateTitle.textContent = '今日待办';
+            } else if (isYesterday(currentDate)) {
+                dateTitle.textContent = '昨日待办';
+            } else {
+                dateTitle.textContent = `${currentDate.getMonth() + 1}月${currentDate.getDate()}日待办`;
+            }
+            
+            // 更新快速日期按钮状态
+            updateQuickDatesActiveState();
+        }
+
+        // 更新快速日期选择器
+        function updateQuickDates() {
+            quickDatesContainer.innerHTML = '';
+            
+            // 显示前后3天共7天
+            for (let i = -3; i <= 3; i++) {
+                const date = new Date(currentDate);
+                date.setDate(date.getDate() + i);
+                const dateKey = getDateKey(date);
+                
+                const btn = document.createElement('button');
+                btn.className = 'px-3 py-2 rounded-lg text-sm transition-colors whitespace-nowrap';
+                btn.dataset.date = dateKey;
+                
+                if (i === 0) {
+                    btn.classList.add('date-btn-active');
+                } else {
+                    btn.classList.add('hover:bg-gray-200');
+                }
+                
+                // 显示星期几和日期
+                const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+                const weekday = weekdays[date.getDay()];
+                const day = date.getDate();
+                
+                if (i === -1) {
+                    btn.textContent = `昨天 ${day}日`;
+                } else if (i === 0) {
+                    btn.textContent = `今天 ${day}日`;
+                } else if (i === 1) {
+                    btn.textContent = `明天 ${day}日`;
+                } else {
+                    btn.textContent = `周${weekday} ${day}日`;
+                }
+                
+                // 计算该日期的总任务数和完成数
+                let totalCount = 0;
+                let completedCount = 0;
+                
+                // 每日任务
+                if (dailyTasks[dateKey]) {
+                    totalCount += dailyTasks[dateKey].length;
+                    completedCount += dailyTasks[dateKey].filter(t => t.completed).length;
+                }
+                
+                // 长期任务子项
+                longTermProjects.forEach(project => {
+                    const subtasksForDate = project.subtasks.filter(st => st.date === dateKey);
+                    totalCount += subtasksForDate.length;
+                    completedCount += subtasksForDate.filter(st => st.completed).length;
+                });
+                
+                if (totalCount > 0) {
+                    btn.textContent += ` (${completedCount}/${totalCount})`;
+                }
+                
+                btn.addEventListener('click', () => {
+                    currentDate = new Date(dateKey);
+                    renderCurrentDateTasks();
+                    updateDateDisplay();
+                    updateQuickDates();
+                });
+                
+                quickDatesContainer.appendChild(btn);
+            }
+        }
+
+        // 更新快速日期按钮的激活状态
+        function updateQuickDatesActiveState() {
+            const buttons = quickDatesContainer.querySelectorAll('button');
+            const currentKey = getDateKey(currentDate);
+            
+            buttons.forEach(btn => {
+                if (btn.dataset.date === currentKey) {
+                    btn.classList.add('date-btn-active');
+                    btn.classList.remove('hover:bg-gray-200');
+                } else {
+                    btn.classList.remove('date-btn-active');
+                    btn.classList.add('hover:bg-gray-200');
+                }
+            });
+        }
+
+        // 生成唯一ID
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+        }
+
+        // 加载所有数据
+        function loadAllData() {
+            const savedDailyTasks = localStorage.getItem('todomaster-pro-daily-tasks');
+            const savedDelayedTasks = localStorage.getItem('todomaster-pro-delayed-tasks');
+            const savedLongTermProjects = localStorage.getItem('todomaster-pro-long-term-projects');
+            const savedAutoMigrate = localStorage.getItem('todomaster-pro-auto-migrate');
+            
+            if (savedDailyTasks) {
+                dailyTasks = JSON.parse(savedDailyTasks);
+            }
+            if (savedDelayedTasks) {
+                delayedTasks = JSON.parse(savedDelayedTasks);
+            }
+            if (savedLongTermProjects) {
+                longTermProjects = JSON.parse(savedLongTermProjects);
+            }
+            if (savedAutoMigrate !== null) {
+                autoMigrateEnabled = JSON.parse(savedAutoMigrate);
+                autoMigrateToggle.checked = autoMigrateEnabled;
+            }
+        }
+
+        // 保存所有数据
+        function saveAllData() {
+            localStorage.setItem('todomaster-pro-daily-tasks', JSON.stringify(dailyTasks));
+            localStorage.setItem('todomaster-pro-delayed-tasks', JSON.stringify(delayedTasks));
+            localStorage.setItem('todomaster-pro-long-term-projects', JSON.stringify(longTermProjects));
+            localStorage.setItem('todomaster-pro-auto-migrate', JSON.stringify(autoMigrateEnabled));
+        }
+
+        // 检查并迁移前一天未完成的任务
+        function checkAndMigrateUnfinishedTasks() {
+            if (!autoMigrateEnabled) return;
+            
+            const today = new Date();
+            const todayKey = getDateKey(today);
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayKey = getDateKey(yesterday);
+            
+            // 检查昨天是否有未完成的任务
+            if (dailyTasks[yesterdayKey]) {
+                const unfinishedTasks = dailyTasks[yesterdayKey].filter(task => !task.completed);
+                
+                if (unfinishedTasks.length > 0) {
+                    // 如果今天还没有任务，初始化今天的任务数组
+                    if (!dailyTasks[todayKey]) {
+                        dailyTasks[todayKey] = [];
+                    }
+                    
+                    // 迁移未完成的任务到今天
+                    unfinishedTasks.forEach(task => {
+                        // 检查任务是否已经迁移过（避免重复迁移）
+                        const alreadyMigrated = dailyTasks[todayKey].some(
+                            t => t.text === task.text && t.createdAt === task.createdAt
+                        );
+                        
+                        if (!alreadyMigrated) {
+                            dailyTasks[todayKey].push({
+                                ...task,
+                                id: generateId(),
+                                migratedFrom: yesterdayKey
+                            });
+                        }
+                    });
+                    
+                    saveAllData();
+                }
+            }
+        }
+
+        // 检查并恢复到期的延后任务
+        function checkAndRestoreDelayedTasks() {
+            const todayKey = getDateKey(new Date());
+            const tasksToRestore = delayedTasks.filter(task => task.delayUntil <= todayKey);
+            
+            if (tasksToRestore.length > 0) {
+                // 如果今天还没有任务，初始化今天的任务数组
+                if (!dailyTasks[todayKey]) {
+                    dailyTasks[todayKey] = [];
+                }
+                
+                // 将到期的延后任务恢复到今日待办
+                tasksToRestore.forEach(task => {
+                    dailyTasks[todayKey].push({
+                        ...task,
+                        id: generateId(),
+                        restoredFromDelay: true
+                    });
+                });
+                
+                // 从延后任务列表中移除已恢复的任务
+                delayedTasks = delayedTasks.filter(task => task.delayUntil > todayKey);
+                
+                saveAllData();
+            }
+        }
+
+        // 获取当前日期的任务
+        function getCurrentDateTasks() {
+            const dateKey = getDateKey(currentDate);
+            return dailyTasks[dateKey] || [];
+        }
+
+        // 获取当前日期的长期任务子项
+        function getCurrentDateLongTermTasks() {
+            const dateKey = getDateKey(currentDate);
+            const longTermTasks = [];
+            
+            longTermProjects.forEach(project => {
+                const subtasksForDate = project.subtasks.filter(st => st.date === dateKey);
+                subtasksForDate.forEach(subtask => {
+                    longTermTasks.push({
+                        ...subtask,
+                        projectId: project.id,
+                        projectName: project.name
+                    });
+                });
+            });
+            
+            return longTermTasks;
+        }
+
+        // 渲染当前日期的任务
+        function renderCurrentDateTasks() {
+            const currentDailyTasks = getCurrentDateTasks();
+            const currentLongTermTasks = getCurrentDateLongTermTasks();
+            const allTasks = [...currentDailyTasks, ...currentLongTermTasks];
+            
+            // 渲染每日任务
+            if (currentDailyTasks.length === 0) {
+                emptyState.classList.remove('hidden');
+                taskList.innerHTML = '';
+                taskList.appendChild(emptyState);
+            } else {
+                emptyState.classList.add('hidden');
+                taskList.innerHTML = '';
+
+                currentDailyTasks.forEach(task => {
+                    const li = createTaskElement(task, 'daily');
+                    taskList.appendChild(li);
+                });
+            }
+            
+            // 渲染长期任务今日子项
+            if (currentLongTermTasks.length === 0) {
+                longTermTodaySection.classList.add('hidden');
+            } else {
+                longTermTodaySection.classList.remove('hidden');
+                longTermTaskCount.textContent = `${currentLongTermTasks.length}项`;
+                longTermTodayList.innerHTML = '';
+                
+                currentLongTermTasks.forEach(task => {
+                    const li = createTaskElement(task, 'long-term');
+                    longTermTodayList.appendChild(li);
+                });
+            }
+
+            updateStats(allTasks);
+        }
+
+        // 创建任务元素
+        function createTaskElement(task, type) {
+            const li = document.createElement('li');
+            li.className = 'p-4 hover:bg-white/50 transition-colors group';
+            li.dataset.id = task.id;
+            li.dataset.type = type;
+            
+            let projectBadge = '';
+            if (type === 'long-term') {
+                projectBadge = `<span class="ml-2 text-xs bg-secondary/10 text-secondary px-2 py-0.5 rounded">${task.projectName}</span>`;
+            }
+            
+            li.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center flex-1">
+                        <input 
+                            type="checkbox" 
+                            class="task-checkbox w-5 h-5 rounded border-gray-300 ${type === 'long-term' ? 'text-secondary' : 'text-primary'} focus:ring-${type === 'long-term' ? 'secondary' : 'primary'}/50 mr-3 cursor-pointer"
+                            ${task.completed ? 'checked' : ''}
+                        >
+                        <span class="task-text text-lg ${task.completed ? 'task-complete' : ''}">${escapeHtml(task.text)}${projectBadge}</span>
+                    </div>
+                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button class="delay-btn text-gray-500 hover:text-warning transition-colors p-1" title="延后任务">
+                            <i class="fa fa-clock-o"></i>
+                        </button>
+                        <button class="edit-btn text-gray-500 hover:text-${type === 'long-term' ? 'secondary' : 'primary'} transition-colors p-1" title="编辑任务">
+                            <i class="fa fa-pencil"></i>
+                        </button>
+                        <button class="delete-btn text-gray-500 hover:text-danger transition-colors p-1" title="删除任务">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // 添加事件监听器
+            const checkbox = li.querySelector('.task-checkbox');
+            const delayBtn = li.querySelector('.delay-btn');
+            const editBtn = li.querySelector('.edit-btn');
+            const deleteBtn = li.querySelector('.delete-btn');
+
+            checkbox.addEventListener('change', () => toggleTaskComplete(task.id, type));
+            delayBtn.addEventListener('click', () => openDelayModal(task.id, type));
+            editBtn.addEventListener('click', () => openEditModal(task.id, type));
+            deleteBtn.addEventListener('click', () => deleteTask(task.id, type));
+
+            return li;
+        }
+
+        // 渲染延后任务列表
+        function renderDelayedTasks() {
+            if (delayedTasks.length === 0) {
+                delayedEmptyState.classList.remove('hidden');
+                delayedTaskList.innerHTML = '';
+                delayedTaskList.appendChild(delayedEmptyState);
+                delayedTaskCount.textContent = '0项';
+                return;
+            }
+
+            delayedEmptyState.classList.add('hidden');
+            delayedTaskList.innerHTML = '';
+            delayedTaskCount.textContent = `${delayedTasks.length}项`;
+
+            // 按延后日期排序
+            const sortedTasks = [...delayedTasks].sort((a, b) => a.delayUntil.localeCompare(b.delayUntil));
+
+            sortedTasks.forEach(task => {
+                const li = document.createElement('li');
+                li.className = 'p-4 hover:bg-white/50 transition-colors group';
+                li.dataset.id = task.id;
+                
+                li.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center flex-1">
+                            <span class="task-text text-lg">${escapeHtml(task.text)}</span>
+                            <span class="ml-3 text-sm text-warning">将在 ${task.delayUntil} 恢复</span>
+                        </div>
+                        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button class="restore-btn text-gray-500 hover:text-success transition-colors p-1" title="立即恢复">
+                                <i class="fa fa-undo"></i>
+                            </button>
+                            <button class="delete-delayed-btn text-gray-500 hover:text-danger transition-colors p-1" title="删除任务">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                // 添加事件监听器
+                const restoreBtn = li.querySelector('.restore-btn');
+                const deleteBtn = li.querySelector('.delete-delayed-btn');
+
+                restoreBtn.addEventListener('click', () => restoreDelayedTask(task.id));
+                deleteBtn.addEventListener('click', () => deleteDelayedTask(task.id));
+
+                delayedTaskList.appendChild(li);
+            });
+        }
+
+        // 更新统计信息
+        function updateStats(allTasks) {
+            const total = allTasks.length;
+            const completed = allTasks.filter(task => task.completed).length;
+            const pending = total - completed;
+            const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+            // 更新进度条
+            progressBar.style.width = `${rate}%`;
+            progressText.textContent = `${completed}/${total}`;
+            
+            // 更新统计数字
+            taskCount.textContent = `${getCurrentDateTasks().length}项`;
+            totalTasksEl.textContent = total;
+            completedTasksEl.textContent = completed;
+            pendingTasksEl.textContent = pending;
+            completionRateEl.textContent = `${rate}%`;
+
+            // 添加完成动画效果
+            if (rate === 100 && total > 0 && isToday(currentDate)) {
+                celebrateCompletion();
+            }
+        }
+
+        // 添加每日任务
+        function addDailyTask(text) {
+            if (!text.trim()) return;
+
+            const newTask = {
+                id: generateId(),
+                text: text.trim(),
+                completed: false,
+                createdAt: new Date().toISOString()
+            };
+
+            const dateKey = getDateKey(currentDate);
+            if (!dailyTasks[dateKey]) {
+                dailyTasks[dateKey] = [];
+            }
+            
+            dailyTasks[dateKey].unshift(newTask);
+            saveAllData();
+            renderCurrentDateTasks();
+            updateQuickDates();
+            
+            // 添加成功动画
+            const newTaskEl = taskList.querySelector(`[data-id="${newTask.id}"]`);
+            if (newTaskEl) {
+                newTaskEl.classList.add('animate-pulse');
+                setTimeout(() => {
+                    newTaskEl.classList.remove('animate-pulse');
+                }, 1000);
+            }
+        }
+
+        // 切换任务完成状态
+        function toggleTaskComplete(id, type) {
+            if (type === 'daily') {
+                const dateKey = getDateKey(currentDate);
+                const task = dailyTasks[dateKey].find(task => task.id === id);
+                if (task) {
+                    task.completed = !task.completed;
+                }
+            } else if (type === 'long-term') {
+                longTermProjects.forEach(project => {
+                    const subtask = project.subtasks.find(st => st.id === id);
+                    if (subtask) {
+                        subtask.completed = !subtask.completed;
+                    }
+                });
+            }
+            
+            saveAllData();
+            renderCurrentDateTasks();
+            updateQuickDates();
+            
+            // 如果在项目详情页，也更新项目详情
+            if (currentProjectId) {
+                renderProjectDetails(currentProjectId);
+            }
+        }
+
+        // 删除任务
+        function deleteTask(id, type) {
+            if (type === 'daily') {
+                const dateKey = getDateKey(currentDate);
+                dailyTasks[dateKey] = dailyTasks[dateKey].filter(task => task.id !== id);
+                
+                // 如果该日期没有任务了，删除这个日期键
+                if (dailyTasks[dateKey].length === 0) {
+                    delete dailyTasks[dateKey];
+                }
+            } else if (type === 'long-term') {
+                longTermProjects.forEach(project => {
+                    project.subtasks = project.subtasks.filter(st => st.id !== id);
+                });
+            }
+            
+            saveAllData();
+            renderCurrentDateTasks();
+            updateQuickDates();
+            
+            // 如果在项目详情页，也更新项目详情
+            if (currentProjectId) {
+                renderProjectDetails(currentProjectId);
+            }
+        }
+
+        // 打开编辑模态框
+        function openEditModal(id, type) {
+            let task = null;
+            
+            if (type === 'daily') {
+                const dateKey = getDateKey(currentDate);
+                task = dailyTasks[dateKey].find(task => task.id === id);
+            } else if (type === 'long-term') {
+                longTermProjects.forEach(project => {
+                    const subtask = project.subtasks.find(st => st.id === id);
+                    if (subtask) {
+                        task = subtask;
+                    }
+                });
+            }
+            
+            if (task) {
+                editingTaskId = id;
+                editTaskInput.value = task.text;
+                editModal.classList.remove('hidden');
+                
+                // 模态框动画
+                setTimeout(() => {
+                    modalContent.classList.remove('scale-95', 'opacity-0');
+                    modalContent.classList.add('scale-100', 'opacity-100');
+                }, 10);
+                
+                editTaskInput.focus();
+            }
+        }
+
+        // 关闭编辑模态框
+        function closeEditModal() {
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            
+            setTimeout(() => {
+                editModal.classList.add('hidden');
+                editingTaskId = null;
+            }, 200);
+        }
+
+        // 保存编辑的任务
+        function saveEditedTask(text) {
+            if (!text.trim() || !editingTaskId) return;
+
+            // 先找每日任务
+            const dateKey = getDateKey(currentDate);
+            if (dailyTasks[dateKey]) {
+                const task = dailyTasks[dateKey].find(task => task.id === editingTaskId);
+                if (task) {
+                    task.text = text.trim();
+                    saveAllData();
+                    renderCurrentDateTasks();
+                    closeEditModal();
+                    return;
+                }
+            }
+            
+            // 再找长期任务子项
+            longTermProjects.forEach(project => {
+                const subtask = project.subtasks.find(st => st.id === editingTaskId);
+                if (subtask) {
+                    subtask.text = text.trim();
+                    saveAllData();
+                    renderCurrentDateTasks();
+                    closeEditModal();
+                    
+                    // 如果在项目详情页，也更新项目详情
+                    if (currentProjectId) {
+                        renderProjectDetails(currentProjectId);
+                    }
+                }
+            });
+        }
+
+        // 打开延后任务模态框
+        function openDelayModal(id, type) {
+            let task = null;
+            
+            if (type === 'daily') {
+                const dateKey = getDateKey(currentDate);
+                task = dailyTasks[dateKey].find(task => task.id === id);
+            } else if (type === 'long-term') {
+                longTermProjects.forEach(project => {
+                    const subtask = project.subtasks.find(st => st.id === id);
+                    if (subtask) {
+                        task = subtask;
+                    }
+                });
+            }
+            
+            if (task) {
+                delayingTaskId = id;
+                delayingTaskType = type;
+                
+                // 设置默认延后日期为明天
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                delayDateInput.value = getDateKey(tomorrow);
+                
+                delayModal.classList.remove('hidden');
+                
+                // 模态框动画
+                setTimeout(() => {
+                    delayModalContent.classList.remove('scale-95', 'opacity-0');
+                    delayModalContent.classList.add('scale-100', 'opacity-100');
+                }, 10);
+                
+                delayDateInput.focus();
+            }
+        }
+
+        // 关闭延后任务模态框
+        function closeDelayModal() {
+            delayModalContent.classList.remove('scale-100', 'opacity-100');
+            delayModalContent.classList.add('scale-95', 'opacity-0');
+            
+            setTimeout(() => {
+                delayModal.classList.add('hidden');
+                delayingTaskId = null;
+                delayingTaskType = null;
+            }, 200);
+        }
+
+        // 确认延后任务
+        function confirmDelayTask(delayUntil) {
+            if (!delayUntil || !delayingTaskId) return;
+
+            let task = null;
+            
+            if (delayingTaskType === 'daily') {
+                const dateKey = getDateKey(currentDate);
+                task = dailyTasks[dateKey].find(task => task.id === delayingTaskId);
+                
+                if (task) {
+                    // 从每日任务中移除
+                    dailyTasks[dateKey] = dailyTasks[dateKey].filter(t => t.id !== delayingTaskId);
+                    
+                    if (dailyTasks[dateKey].length === 0) {
+                        delete dailyTasks[dateKey];
+                    }
+                }
+            } else if (delayingTaskType === 'long-term') {
+                longTermProjects.forEach(project => {
+                    const subtask = project.subtasks.find(st => st.id === delayingTaskId);
+                    if (subtask) {
+                        task = subtask;
+                        // 从长期项目子项中移除
+                        project.subtasks = project.subtasks.filter(st => st.id !== delayingTaskId);
+                    }
+                });
+            }
+            
+            if (task) {
+                // 添加到延后任务列表
+                delayedTasks.push({
+                    ...task,
+                    id: generateId(),
+                    delayUntil: delayUntil,
+                    originalType: delayingTaskType
+                });
+                
+                saveAllData();
+                renderCurrentDateTasks();
+                renderDelayedTasks();
+                updateQuickDates();
+                closeDelayModal();
+                
+                // 如果在项目详情页，也更新项目详情
+                if (currentProjectId) {
+                    renderProjectDetails(currentProjectId);
+                }
+            }
+        }
+
+        // 立即恢复延后任务
+        function restoreDelayedTask(id) {
+            const taskIndex = delayedTasks.findIndex(task => task.id === id);
+            
+            if (taskIndex !== -1) {
+                const task = delayedTasks[taskIndex];
+                const todayKey = getDateKey(new Date());
+                
+                // 从延后任务列表中移除
+                delayedTasks.splice(taskIndex, 1);
+                
+                // 恢复到今日待办
+                if (!dailyTasks[todayKey]) {
+                    dailyTasks[todayKey] = [];
+                }
+                
+                dailyTasks[todayKey].push({
+                    ...task,
+                    id: generateId(),
+                    restoredFromDelay: true
+                });
+                
+                saveAllData();
+                renderCurrentDateTasks();
+                renderDelayedTasks();
+                updateQuickDates();
+            }
+        }
+
+        // 删除延后任务
+        function deleteDelayedTask(id) {
+            delayedTasks = delayedTasks.filter(task => task.id !== id);
+            saveAllData();
+            renderDelayedTasks();
+        }
+
+        // 清除已完成任务
+        function clearCompletedTasks() {
+            if (confirm('确定要清除当前日期所有已完成的任务吗？')) {
+                const dateKey = getDateKey(currentDate);
+                
+                // 清除每日任务中的已完成项
+                if (dailyTasks[dateKey]) {
+                    dailyTasks[dateKey] = dailyTasks[dateKey].filter(task => !task.completed);
+                    
+                    if (dailyTasks[dateKey].length === 0) {
+                        delete dailyTasks[dateKey];
+                    }
+                }
+                
+                // 清除长期任务中的已完成项
+                longTermProjects.forEach(project => {
+                    project.subtasks = project.subtasks.filter(
+                        st => st.date !== dateKey || !st.completed
+                    );
+                });
+                
+                saveAllData();
+                renderCurrentDateTasks();
+                updateQuickDates();
+                
+                // 如果在项目详情页，也更新项目详情
+                if (currentProjectId) {
+                    renderProjectDetails(currentProjectId);
+                }
+            }
+        }
+
+        // 复制任务到明天
+        function copyToTomorrow() {
+            const currentDailyTasks = getCurrentDateTasks();
+            if (currentDailyTasks.length === 0) {
+                alert('当前日期没有每日任务可复制');
+                return;
+            }
+            
+            const tomorrow = new Date(currentDate);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrowKey = getDateKey(tomorrow);
+            
+            // 创建未完成的任务副本
+            const copiedTasks = currentDailyTasks.map(task => ({
+                ...task,
+                id: generateId(),
+                completed: false,
+                createdAt: new Date().toISOString()
+            }));
+            
+            // 如果明天已经有任务，合并进去
+            if (dailyTasks[tomorrowKey]) {
+                dailyTasks[tomorrowKey] = [...dailyTasks[tomorrowKey], ...copiedTasks];
+            } else {
+                dailyTasks[tomorrowKey] = copiedTasks;
+            }
+            
+            saveAllData();
+            updateQuickDates();
+            
+            alert(`已将${currentDailyTasks.length}个每日任务复制到明天`);
+        }
+
+        // 重置当日任务
+        function resetDayTasks() {
+            if (confirm('确定要重置当前日期的所有任务吗？这将删除当前日期的所有每日任务。')) {
+                const dateKey = getDateKey(currentDate);
+                delete dailyTasks[dateKey];
+                saveAllData();
+                renderCurrentDateTasks();
+                updateQuickDates();
+            }
+        }
+
+        // 完成庆祝效果
+        function celebrateCompletion() {
+            // 创建庆祝元素
+            const celebration = document.createElement('div');
+            celebration.className = 'fixed inset-0 pointer-events-none z-50 flex items-center justify-center';
+            celebration.innerHTML = `
+                <div class="text-center">
+                    <div class="text-6xl mb-4">🎉</div>
+                    <h2 class="text-3xl font-bold text-primary mb-2">太棒了！</h2>
+                    <p class="text-xl text-gray-700">你完成了今天所有的任务！</p>
+                </div>
+            `;
+            
+            document.body.appendChild(celebration);
+            
+            // 3秒后移除
+            setTimeout(() => {
+                celebration.style.opacity = '0';
+                celebration.style.transition = 'opacity 0.5s ease';
+                setTimeout(() => {
+                    document.body.removeChild(celebration);
+                }, 500);
+            }, 3000);
+        }
+
+        // HTML转义函数
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 切换到前一天
+        function goToPrevDay() {
+            currentDate.setDate(currentDate.getDate() - 1);
+            renderCurrentDateTasks();
+            updateDateDisplay();
+            updateQuickDates();
+        }
+
+        // 切换到后一天
+        function goToNextDay() {
+            currentDate.setDate(currentDate.getDate() + 1);
+            renderCurrentDateTasks();
+            updateDateDisplay();
+            updateQuickDates();
+        }
+
+        // 回到今天
+        function goToToday() {
+            currentDate = new Date();
+            renderCurrentDateTasks();
+            updateDateDisplay();
+            updateQuickDates();
+        }
+
+        // 切换标签页
+        function switchTab(tab) {
+            // 移除所有标签的激活状态
+            dailyTab.classList.remove('tab-active');
+            delayedTab.classList.remove('tab-active');
+            longTermTab.classList.remove('tab-active');
+            
+            // 隐藏所有内容
+            dailyContent.classList.add('hidden');
+            delayedContent.classList.add('hidden');
+            longTermContent.classList.add('hidden');
+            
+            // 激活选中的标签和内容
+            if (tab === 'daily') {
+                dailyTab.classList.add('tab-active');
+                dailyContent.classList.remove('hidden');
+            } else if (tab === 'delayed') {
+                delayedTab.classList.add('tab-active');
+                delayedContent.classList.remove('hidden');
+            } else if (tab === 'long-term') {
+                longTermTab.classList.add('tab-active');
+                longTermContent.classList.remove('hidden');
+            }
+        }
+
+        // 设置默认日期
+        function setDefaultDates() {
+            const today = new Date();
+            const nextWeek = new Date(today);
+            nextWeek.setDate(nextWeek.getDate() + 7);
+            
+            projectStartDate.value = getDateKey(today);
+            projectEndDate.value = getDateKey(nextWeek);
+            subtaskDate.value = getDateKey(currentDate);
+        }
+
+        // 添加长期项目
+        function addLongTermProject(name, startDate, endDate) {
+            if (!name.trim()) return;
+
+            const newProject = {
+                id: generateId(),
+                name: name.trim(),
+                startDate: startDate,
+                endDate: endDate,
+                createdAt: new Date().toISOString(),
+                subtasks: []
+            };
+
+            longTermProjects.unshift(newProject);
+            saveAllData();
+            renderLongTermProjects();
+        }
+
+        // 渲染长期项目列表
+        function renderLongTermProjects() {
+            if (longTermProjects.length === 0) {
+                projectEmptyState.classList.remove('hidden');
+                projectList.innerHTML = '';
+                projectList.appendChild(projectEmptyState);
+                projectCount.textContent = '0个';
+                return;
+            }
+
+            projectEmptyState.classList.add('hidden');
+            projectList.innerHTML = '';
+            projectCount.textContent = `${longTermProjects.length}个`;
+
+            longTermProjects.forEach(project => {
+                const li = document.createElement('li');
+                li.className = 'p-4 hover:bg-white/50 transition-colors cursor-pointer';
+                li.dataset.id = project.id;
+                
+                const totalSubtasks = project.subtasks.length;
+                const completedSubtasks = project.subtasks.filter(st => st.completed).length;
+                const progress = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
+                
+                li.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-lg font-semibold text-dark">${escapeHtml(project.name)}</h3>
+                        <span class="text-sm text-gray-500">${project.startDate} 至 ${project.endDate}</span>
+                    </div>
+                    <div class="flex justify-between mb-1">
+                        <span class="text-sm text-gray-600">进度</span>
+                        <span class="text-sm font-medium text-secondary">${completedSubtasks}/${totalSubtasks} (${progress}%)</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                        <div class="bg-gradient-to-r from-secondary to-primary h-2 rounded-full transition-all duration-500 ease-out" style="width: ${progress}%"></div>
+                    </div>
+                `;
+
+                li.addEventListener('click', () => openProjectModal(project.id));
+                projectList.appendChild(li);
+            });
+        }
+
+        // 打开项目详情模态框
+        function openProjectModal(projectId) {
+            currentProjectId = projectId;
+            const project = longTermProjects.find(p => p.id === projectId);
+            
+            if (project) {
+                projectModalTitle.textContent = project.name;
+                subtaskDate.value = getDateKey(currentDate);
+                renderProjectDetails(projectId);
+                
+                projectModal.classList.remove('hidden');
+                
+                // 模态框动画
+                setTimeout(() => {
+                    projectModalContent.classList.remove('scale-95', 'opacity-0');
+                    projectModalContent.classList.add('scale-100', 'opacity-100');
+                }, 10);
+                
+                newSubtaskInput.focus();
+            }
+        }
+
+        // 渲染项目详情
+        function renderProjectDetails(projectId) {
+            const project = longTermProjects.find(p => p.id === projectId);
+            if (!project) return;
+            
+            const totalSubtasks = project.subtasks.length;
+            const completedSubtasks = project.subtasks.filter(st => st.completed).length;
+            const progress = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
+            
+            // 更新项目进度
+            projectProgressBar.style.width = `${progress}%`;
+            projectProgressText.textContent = `${completedSubtasks}/${totalSubtasks}`;
+            
+            // 渲染子任务列表
+            subtaskList.innerHTML = '';
+            
+            if (totalSubtasks === 0) {
+                const emptyLi = document.createElement('li');
+                emptyLi.className = 'p-4 text-center text-gray-500';
+                emptyLi.innerHTML = '<i class="fa fa-tasks text-2xl mb-2 block opacity-50"></i>暂无子任务，添加一个开始吧！';
+                subtaskList.appendChild(emptyLi);
+                return;
+            }
+            
+            // 按日期排序子任务
+            const sortedSubtasks = [...project.subtasks].sort((a, b) => a.date.localeCompare(b.date));
+            
+            sortedSubtasks.forEach(subtask => {
+                const li = document.createElement('li');
+                li.className = 'p-3 hover:bg-white/50 transition-colors group';
+                li.dataset.id = subtask.id;
+                
+                li.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center flex-1">
+                            <input 
+                                type="checkbox" 
+                                class="subtask-checkbox w-4 h-4 rounded border-gray-300 text-secondary focus:ring-secondary/50 mr-3 cursor-pointer"
+                                ${subtask.completed ? 'checked' : ''}
+                            >
+                            <span class="subtask-text ${subtask.completed ? 'task-complete' : ''}">${escapeHtml(subtask.text)}</span>
+                            <span class="ml-2 text-xs text-gray-500">${subtask.date}</span>
+                        </div>
+                        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button class="delete-subtask-btn text-gray-500 hover:text-danger transition-colors p-1">
+                                <i class="fa fa-trash-o"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                // 添加事件监听器
+                const checkbox = li.querySelector('.subtask-checkbox');
+                const deleteBtn = li.querySelector('.delete-subtask-btn');
+                
+                checkbox.addEventListener('change', () => {
+                    subtask.completed = !subtask.completed;
+                    saveAllData();
+                    renderProjectDetails(projectId);
+                    renderCurrentDateTasks();
+                    updateQuickDates();
+                });
+                
+                deleteBtn.addEventListener('click', () => {
+                    project.subtasks = project.subtasks.filter(st => st.id !== subtask.id);
+                    saveAllData();
+                    renderProjectDetails(projectId);
+                    renderCurrentDateTasks();
+                    updateQuickDates();
+                    renderLongTermProjects();
+                });
+                
+                subtaskList.appendChild(li);
+            });
+        }
+
+        // 关闭项目详情模态框
+        function closeProjectModal() {
+            projectModalContent.classList.remove('scale-100', 'opacity-100');
+            projectModalContent.classList.add('scale-95', 'opacity-0');
+            
+            setTimeout(() => {
+                projectModal.classList.add('hidden');
+                currentProjectId = null;
+            }, 200);
+        }
+
+        // 添加子任务
+        function addSubtask(text, date) {
+            if (!text.trim() || !currentProjectId) return;
+            
+            const project = longTermProjects.find(p => p.id === currentProjectId);
+            if (!project) return;
+            
+            const newSubtask = {
+                id: generateId(),
+                text: text.trim(),
+                date: date,
+                completed: false,
+                createdAt: new Date().toISOString()
+            };
+            
+            project.subtasks.push(newSubtask);
+            saveAllData();
+            renderProjectDetails(currentProjectId);
+            renderCurrentDateTasks();
+            updateQuickDates();
+            renderLongTermProjects();
+        }
+
+        // 删除项目
+        function deleteProject() {
+            if (!currentProjectId) return;
+            
+            if (confirm('确定要删除这个项目吗？所有子任务也将被永久删除。')) {
+                longTermProjects = longTermProjects.filter(p => p.id !== currentProjectId);
+                saveAllData();
+                renderLongTermProjects();
+                renderCurrentDateTasks();
+                updateQuickDates();
+                closeProjectModal();
+            }
+        }
+
+        // 事件监听器
+        addTaskForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            addDailyTask(newTaskInput.value);
+            newTaskInput.value = '';
+        });
+
+        clearCompletedBtn.addEventListener('click', clearCompletedTasks);
+        copyToTomorrowBtn.addEventListener('click', copyToTomorrow);
+        resetDayBtn.addEventListener('click', resetDayTasks);
+        autoMigrateToggle.addEventListener('change', () => {
+            autoMigrateEnabled = autoMigrateToggle.checked;
+            saveAllData();
+        });
+
+        prevDayBtn.addEventListener('click', goToPrevDay);
+        nextDayBtn.addEventListener('click', goToNextDay);
+        todayBtn.addEventListener('click', goToToday);
+
+        dailyTab.addEventListener('click', () => switchTab('daily'));
+        delayedTab.addEventListener('click', () => switchTab('delayed'));
+        longTermTab.addEventListener('click', () => switchTab('long-term'));
+
+        editTaskForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveEditedTask(editTaskInput.value);
+        });
+        cancelEditBtn.addEventListener('click', closeEditModal);
+
+        delayTaskForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            confirmDelayTask(delayDateInput.value);
+        });
+        cancelDelayBtn.addEventListener('click', closeDelayModal);
+
+        addProjectForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            addLongTermProject(newProjectInput.value, projectStartDate.value, projectEndDate.value);
+            newProjectInput.value = '';
+        });
+
+        addSubtaskForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            addSubtask(newSubtaskInput.value, subtaskDate.value);
+            newSubtaskInput.value = '';
+        });
+        deleteProjectBtn.addEventListener('click', deleteProject);
+        closeProjectModalBtn.addEventListener('click', closeProjectModal);
+
+        // 点击模态框背景关闭
+        editModal.addEventListener('click', (e) => {
+            if (e.target === editModal) {
+                closeEditModal();
+            }
+        });
+
+        delayModal.addEventListener('click', (e) => {
+            if (e.target === delayModal) {
+                closeDelayModal();
+            }
+        });
+
+        projectModal.addEventListener('click', (e) => {
+            if (e.target === projectModal) {
+                closeProjectModal();
+            }
+        });
+
+        // 键盘快捷键
+        document.addEventListener('keydown', (e) => {
+            // ESC键关闭模态框
+            if (e.key === 'Escape') {
+                if (!editModal.classList.contains('hidden')) {
+                    closeEditModal();
+                }
+                if (!delayModal.classList.contains('hidden')) {
+                    closeDelayModal();
+                }
+                if (!projectModal.classList.contains('hidden')) {
+                    closeProjectModal();
+                }
+            }
+            
+            // Ctrl/Cmd + N 聚焦到添加任务输入框
+            if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                e.preventDefault();
+                newTaskInput.focus();
+            }
+            
+            // 左右箭头键切换日期
+            if (e.key === 'ArrowLeft' && document.activeElement !== newTaskInput && 
+                document.activeElement !== editTaskInput && 
+                document.activeElement !== newProjectInput &&
+                document.activeElement !== newSubtaskInput) {
+                goToPrevDay();
+            }
+            if (e.key === 'ArrowRight' && document.activeElement !== newTaskInput && 
+                document.activeElement !== editTaskInput && 
+                document.activeElement !== newProjectInput &&
+                document.activeElement !== newSubtaskInput) {
+                goToNextDay();
+            }
+        });
+
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
